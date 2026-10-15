@@ -73,14 +73,14 @@ function print_usage {
     echo "./runtests.sh -f -u                   # run style checks and unit tests."
     echo "./runtests.sh -f                      # run coding style and static type checking."
     echo "./runtests.sh --quick --unittests     # run minimal unit tests, for quick verification during code developments."
-    echo "./runtests.sh --autofix               # run automatic code formatting using \"isort\" and \"black\"."
+    echo "./runtests.sh --autofix               # run automatic code formatting using \"ruff\" and \"black\"."
     echo "./runtests.sh --clean                 # clean up temporary files and run \"${PY_EXE} -m pip uninstall -y monai\"."
-    echo "./runtests.sh --formatfix -p /my/code # run automatic code formatting using \"isort\" and \"black\" in specified path."
+    echo "./runtests.sh --formatfix -p /my/code # sort imports with \"ruff\" and format with \"black\" in specified path."
     echo ""
     echo "Code style check options:"
-    echo "    --autofix         : format code using \"isort\" and \"black\""
+    echo "    --autofix         : fix lint and imports with \"ruff\" and format with \"black\""
     echo "    --black           : perform \"black\" code format checks"
-    echo "    --isort           : perform \"isort\" import sort checks"
+    echo "    --isort           : check import sorting with \"ruff\" (legacy option name)"
     echo "    --pylint          : perform \"pylint\" code format checks"
     echo "    --ruff            : perform \"ruff\" code format checks"
     echo "    --flake8          : perform \"ruff\" code format checks (deprecated alias for --ruff)"
@@ -104,14 +104,14 @@ function print_usage {
     echo ""
     echo "Misc. options:"
     echo "    --dryrun          : display the commands to the screen without running"
-    echo "    --setup           : install git pre-commit hooks (black, isort, ruff, DCO sign-off)"
+    echo "    --setup           : install git pre-commit hooks (black, ruff, DCO sign-off)"
     echo "    --copyright       : check whether every source code has a copyright header"
     echo "    -f, --codeformat  : shorthand to run all code style and static analysis tests"
     echo "    -c, --clean       : clean temporary files from tests and exit"
     echo "    -h, --help        : show this help message and exit"
     echo "    -v, --version     : show MONAI and system version information and exit"
     echo "    -p, --path        : specify the path used for formatting, default is the current dir if unspecified"
-    echo "    --formatfix       : format code using \"isort\" and \"black\" for user specified directories"
+    echo "    --formatfix       : sort imports with \"ruff\" and format with \"black\" for user specified directories"
     echo "    --timeout [secs]  : per-test timeout in seconds; tests exceeding this are marked as errors and skipped"
     echo "                        (default: 180s when flag is given without a value; 0 = disabled)"
     echo ""
@@ -447,9 +447,9 @@ then
     ${cmdPrefix}"${PY_EXE}" -m pre_commit install
 
     if [[ -z "$cmdPrefix" ]]; then
-        echo "${green}done! git hooks installed (black, isort, ruff, DCO sign-off).${noColor}"
+        echo "${green}done! git hooks installed (black, ruff, DCO sign-off).${noColor}"
     else
-        echo "dry-run: git hooks would be installed (black, isort, ruff, DCO sign-off)."
+        echo "dry-run: git hooks would be installed (black, ruff, DCO sign-off)."
     fi
 fi
 
@@ -510,23 +510,23 @@ then
     set +e  # disable exit on failure so that diagnostics can be given on failure
     if [ $doIsortFix = true ]
     then
-        echo "${separator}${blue}isort-fix${noColor}"
+        echo "${separator}${blue}ruff-imports-fix${noColor}"
     else
-        echo "${separator}${blue}isort${noColor}"
+        echo "${separator}${blue}ruff-imports${noColor}"
     fi
 
     # ensure that the necessary packages for code format testing are installed
-    if ! is_pip_installed isort
+    if ! is_pip_installed ruff
     then
         install_deps
     fi
-    ${cmdPrefix}"${PY_EXE}" -m isort --version
+    ${cmdPrefix}"${PY_EXE}" -m ruff --version
 
     if [ $doIsortFix = true ]
     then
-        ${cmdPrefix}"${PY_EXE}" -m isort "$homedir"
+        ${cmdPrefix}"${PY_EXE}" -m ruff check --select I --fix "$homedir"
     else
-        ${cmdPrefix}"${PY_EXE}" -m isort --check "$homedir"
+        ${cmdPrefix}"${PY_EXE}" -m ruff check --select I "$homedir"
     fi
 
     isort_status=$?
@@ -623,7 +623,6 @@ then
 
     if [ $doRuffFix = true ]
     then
-        "${PY_EXE}" -m ruff format "$homedir"
         "${PY_EXE}" -m ruff check --fix --unsafe-fixes "$homedir"
     else
         "${PY_EXE}" -m ruff check "$homedir"
